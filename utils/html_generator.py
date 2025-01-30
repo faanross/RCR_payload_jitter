@@ -53,7 +53,7 @@ img { max-width: 100%; height: auto; }
             <td>{result['log_file']}</td>
             <td>{result['ip']}</td>
             <td>{result['label']}</td>
-            <td>{result['mrcr']:.2f}%</td>
+            <td>{result['rcr']:.2f}%</td>
             <td>{result['removed_outlier_count']}</td>
             <td>{len(result['data'])}</td>
         </tr>""" for result in results
@@ -73,7 +73,7 @@ img { max-width: 100%; height: auto; }
         f"""<div class="dataset-section">
             <h3>{result['label']} ({result['ip']})</h3>
             <p>Log File: {result['log_file']}</p>
-            <p>MRCR Score: {result['mrcr']:.2f}%</p>
+            <p>rcr Score: {result['rcr']:.2f}%</p>
             <p>Original Range: {result['original_range'][0]:.1f} - {result['original_range'][1]:.1f} bytes</p>
             <p>Adjusted Range: {result['adjusted_range'][0]:.1f} - {result['adjusted_range'][1]:.1f} bytes</p>
             <p>Outliers Removed: {result['removed_outlier_count']}</p>
@@ -107,7 +107,7 @@ img { max-width: 100%; height: auto; }
             <th>Log File</th>
             <th>IP Address</th>
             <th>Label</th>
-            <th>MRCR Score</th>
+            <th>rcr Score</th>
             <th>Outliers Found</th>
             <th>Total Connections</th>
         </tr>

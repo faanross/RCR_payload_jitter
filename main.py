@@ -5,6 +5,8 @@ import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
 import logging
+from typing import Dict, List, Tuple, Any, Union, TypedDict
+from numpy.typing import NDArray
 from utils.html_generator import generate_html_report
 
 # Set up logging
@@ -14,11 +16,34 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+class LogFileResult(TypedDict):
+    ip: str
+    label: str
+    log_file: str
+    data: NDArray[np.float64]
 
-def identify_outliers_hybrid(data, z_threshold=3.0, min_cluster_size=5, cluster_width=10):
-    """
-    Identify outliers using both z-score and cluster size information.
-    """
+class RCRResult(TypedDict):
+    rcr: float
+    original_range: Tuple[float, float]
+    adjusted_range: Tuple[float, float]
+    total_buckets: int
+    filled_buckets: int
+    removed_outlier_count: int
+    outlier_mask: NDArray[np.bool_]
+    data: NDArray[np.float64]
+
+
+def identify_outliers_hybrid(
+        data: NDArray[np.float64],
+        z_threshold: float = 3.0,
+        min_cluster_size: int = 5,
+        cluster_width: float = 10
+) -> Tuple[NDArray[np.bool_], Tuple[float, float]]:
+    # function determines outliers based on values from config.json
+    # Note I AM NOT AN EXPERT, so cobbled the best hack I could together here
+    # results.html indicates effect of outlier removal
+    # Meaning you can fine-tune based on results to optimize according to your dataset
+
     z_scores = np.abs(stats.zscore(data))
     potential_outliers = z_scores >= z_threshold
 
@@ -26,42 +51,39 @@ def identify_outliers_hybrid(data, z_threshold=3.0, min_cluster_size=5, cluster_
     is_outlier = potential_outliers.copy()
 
     if np.sum(potential_outliers) > 0:
-        # Sort the data for cluster detection
         sorted_data = np.sort(data[potential_outliers])
 
-        # Find clusters using sliding window
         i = 0
         while i < len(sorted_data):
-            # Look at points within cluster_width of current point
             cluster_points = sorted_data[
                 (sorted_data >= sorted_data[i]) &
                 (sorted_data <= sorted_data[i] + cluster_width)
                 ]
 
-            # If we found a valid cluster
             if len(cluster_points) >= min_cluster_size:
-                # Mark all points in this cluster as non-outliers
                 for point in cluster_points:
                     is_outlier[data == point] = False
                 i += len(cluster_points)
             else:
                 i += 1
 
-    # Get valid range from non-outlier points
     valid_data = data[~is_outlier]
     if len(valid_data) > 0:
-        valid_range = (np.min(valid_data), np.max(valid_data))
+        valid_range = (float(np.min(valid_data)), float(np.max(valid_data)))
     else:
-        valid_range = (np.min(data), np.max(data))
+        valid_range = (float(np.min(data)), float(np.max(data)))
 
     return ~is_outlier, valid_range
 
 
-def calculate_mrcr(data, params):
-    """Calculate Modified Range Coverage Ratio using improved hybrid outlier detection"""
-    original_min, original_max = min(data), max(data)
+def calculate_rcr(data: NDArray[np.float64], params: Dict[str, Dict[str, Any]]) -> RCRResult:
 
-    # Identify outliers using hybrid method
+    # Calculate Range Coverage Ratio
+
+    # Find range of dataset
+    original_min, original_max = float(min(data)), float(max(data))
+
+   # call function to determine outliers
     non_outlier_mask, (adjusted_min, adjusted_max) = identify_outliers_hybrid(
         data,
         z_threshold=params['z_threshold']['value'],
@@ -72,39 +94,40 @@ def calculate_mrcr(data, params):
     bucket_size = params['bucket_size']['value']
     min_bucket_count = params['min_bucket_count']['value']
 
-    # Create histograms for both original and adjusted ranges
-    total_initial_buckets = int(np.ceil((original_max - original_min) / bucket_size))
+    # creates buckets based on size
     total_adjusted_buckets = int(np.ceil((adjusted_max - adjusted_min) / bucket_size))
 
-    # Create histogram for adjusted range
     adjusted_hist, _ = np.histogram(data[non_outlier_mask],
                                     bins=total_adjusted_buckets,
                                     range=(adjusted_min, adjusted_max))
 
-    # Count filled buckets (meeting minimum count requirement)
-    filled_buckets = np.sum(adjusted_hist >= min_bucket_count)
+    # determine which buckets are considered filled
+    filled_buckets = int(np.sum(adjusted_hist >= min_bucket_count))
 
-    # Calculate MRCR
-    mrcr = (filled_buckets / total_adjusted_buckets) * 100 if total_adjusted_buckets > 0 else 0
+    # determine RCR
+    rcr = (filled_buckets / total_adjusted_buckets) * 100 if total_adjusted_buckets > 0 else 0
 
     return {
-        'mrcr': mrcr,
+        'rcr': float(rcr),
         'original_range': (original_min, original_max),
         'adjusted_range': (adjusted_min, adjusted_max),
         'total_buckets': total_adjusted_buckets,
         'filled_buckets': filled_buckets,
-        'removed_outlier_count': np.sum(~non_outlier_mask),
+        'removed_outlier_count': int(np.sum(~non_outlier_mask)),
         'outlier_mask': non_outlier_mask,
         'data': data
     }
 
 
-def process_log_file(file_path, ip_configs):
-    """Process a single log file and extract data for specified IPs"""
+def process_log_file(
+        file_path: Path,
+        ip_configs: Dict[str, str]
+) -> List[LogFileResult]:
+    # Process a single log file and extract orig_ip_bytes data for specified IPs.
+
     logger.info(f"Processing log file: {file_path}")
 
     try:
-        # Define columns for Zeek log format
         columns = [
             "ts", "uid", "id_orig_h", "id_orig_p", "id_resp_h", "id_resp_p",
             "proto", "service", "duration", "orig_bytes", "resp_bytes",
@@ -113,15 +136,14 @@ def process_log_file(file_path, ip_configs):
             "resp_ip_bytes", "tunnel_parents"
         ]
 
-        # Read the log file with proper column names
         df = pd.read_csv(file_path, sep='\t', comment='#', names=columns, low_memory=False)
 
         results = []
+
         for ip, label in tqdm(ip_configs.items(), desc="Processing IPs"):
-            # Filter for specific IP and valid orig_ip_bytes
-            ip_data = df[df['id_resp_h'] == ip]
-            ip_data = ip_data[ip_data['orig_ip_bytes'] != '-']
-            ip_data = ip_data['orig_ip_bytes'].dropna().astype(float).values
+            ip_data = df[df['id_resp_h'] == ip] # filter only for the rows containing ip of interest
+            ip_data = ip_data[ip_data['orig_ip_bytes'] != '-'] # filter out rows with no value for bytes
+            ip_data = ip_data['orig_ip_bytes'].dropna().astype(float).values # convert into np array only containing orig_ip_bytes
 
             if len(ip_data) == 0:
                 logger.warning(f"No valid data found for IP {ip} in {file_path}")
@@ -142,8 +164,8 @@ def process_log_file(file_path, ip_configs):
         raise
 
 
-def main():
-    # Load configuration
+def main() -> None:
+    # load json.config
     try:
         with open('config.json', 'r') as f:
             config = json.load(f)
@@ -151,10 +173,13 @@ def main():
         logger.error(f"Error loading config.json: {str(e)}")
         return
 
+    # where to look for Zeek log files
     input_path = Path('./input')
+
+    # final results will be a list of dictionaries
     analysis_results = []
 
-    # Process each log file
+    # process our log files to extract only orig_ip_bytes of IPs defined in config.json
     for log_file, ip_configs in config['input_data'].items():
         file_path = input_path / log_file
 
@@ -162,21 +187,19 @@ def main():
             logger.error(f"Log file not found: {file_path}")
             continue
 
-        # Process the log file
         try:
-            results = process_log_file(file_path, ip_configs)
+            results = process_log_file(file_path, ip_configs) # list with ip, label, path, array of orig_ip_bytes values
 
-            # Calculate MRCR for each result
             for result in results:
-                mrcr_result = calculate_mrcr(result['data'], config['analysis_params'])
-                result.update(mrcr_result)
+                rcr_result = calculate_rcr(result['data'], config['analysis_params'])
+                result.update(rcr_result)
                 analysis_results.append(result)
 
         except Exception as e:
             logger.error(f"Error processing {log_file}: {str(e)}")
             continue
 
-    # Generate report
+    # finally, generate our report as results.html
     if analysis_results:
         try:
             html_report = generate_html_report(analysis_results, config['analysis_params'])
@@ -187,7 +210,6 @@ def main():
             logger.error(f"Error generating report: {str(e)}")
     else:
         logger.error("No results to generate report")
-
 
 if __name__ == "__main__":
     main()
