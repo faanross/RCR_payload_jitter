@@ -5,7 +5,7 @@
             "description": "Number of standard deviations for initial outlier detection"
         },
         "min_cluster_size": {
-            "value": 1,
+            "value": 5,
             "description": "Minimum number of points to be considered a valid cluster"
         },
         "cluster_width": {
@@ -17,15 +17,31 @@
             "description": "Size of buckets for histogram calculation"
         },
         "min_bucket_count": {
-            "value": 1,
+            "value": 2,
             "description": "Minimum number of values needed for a bucket to be considered filled"
         }
     },
     "input_data": {
         "merlin_jitter_01.log": {
-            "24.199.110.233": "Merlin",
-            "204.79.197.203": "Not-Merlin",
-            "146.75.30.172": "Not-Merlin"
+            "24.199.110.233": "Merlin_01"
+        },
+
+        "merlin_jitter_02.log": {
+            "24.199.110.233": "Merlin_02"
+        },
+
+        "cs_random_d30_j0.log": {
+            "143.198.73.116": "Cobalt_Strike_01",
+            "24.199.110.233": "Cobalt_Strike_02"
+        },
+
+        "cs_delay_var_d30_j25.log": {
+            "143.198.3.13": "Cobalt_Strike_03"
+        },
+
+        "cs_delay_var_d300_j25.log": {
+            "143.198.3.13": "Cobalt_Strike_04"
         }
+
     }
 }
