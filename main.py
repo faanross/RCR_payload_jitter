@@ -34,7 +34,7 @@ class RCRResult(TypedDict):
     outlier_mask: NDArray[np.bool_]
     data: NDArray[np.float64]
 
-
+# function to ID outliers using our hybrid approach - Z-score plus determining whether is a cluster based on values chosen in config.json
 def identify_outliers_hybrid(
         data: NDArray[np.float64],
         z_threshold: float = 3.0,
@@ -74,6 +74,7 @@ def identify_outliers_hybrid(
     return ~is_outlier, valid_range
 
 
+# performs actual RCR calculation
 def calculate_rcr(data: NDArray[np.float64], params: Dict[str, Dict[str, Any]]) -> RCRResult:
 
     # Find range of dataset
@@ -114,7 +115,7 @@ def calculate_rcr(data: NDArray[np.float64], params: Dict[str, Dict[str, Any]]) 
         'data': data
     }
 
-
+# processes our zeek conn.logs
 def process_log_file(
         file_path: Path,
         ip_configs: Dict[str, str]
