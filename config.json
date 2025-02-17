@@ -1,15 +1,15 @@
 {
     "analysis_params": {
         "z_threshold": {
-            "value": 3.0,
+            "value": 2.5,
             "description": "Number of standard deviations for initial outlier detection"
         },
         "min_cluster_size": {
-            "value": 5,
+            "value": 10,
             "description": "Minimum number of points to be considered a valid cluster"
         },
         "cluster_width": {
-            "value": 10,
+            "value": 20,
             "description": "Maximum width (in bytes) for points to be considered part of the same cluster"
         },
         "bucket_size": {
@@ -17,7 +17,7 @@
             "description": "Size of buckets for histogram calculation"
         },
         "min_bucket_count": {
-            "value": 2,
+            "value": 3,
             "description": "Minimum number of values needed for a bucket to be considered filled"
         }
     },
@@ -28,6 +28,9 @@
 
         "merlin_jitter_02.log": {
             "24.199.110.233": "Merlin_02"
+        },
+        "merlin_jitter_03.log": {
+            "24.199.110.233": "Merlin_03"
         },
 
         "cs_random_d30_j0.log": {
@@ -41,7 +44,15 @@
 
         "cs_delay_var_d300_j25.log": {
             "143.198.3.13": "Cobalt_Strike_04"
+        },
+        "icedid.log": {
+            "143.198.3.13": "Cobalt_Strike_05",
+            "207.164.234.193": "Bacom_01",
+            "185.125.190.98": "Canonical_01",
+            "91.189.91.98": "Canonical_02",
+            "91.189.91.49": "Canonical_03",
+            "23.53.4.107": "Akamai_01",
+            "20.187.55.34": "Microsoft"
         }
-
     }
 }

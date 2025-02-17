@@ -9,19 +9,21 @@ from typing import Dict, List, Tuple, Any, Union, TypedDict
 from numpy.typing import NDArray
 from utils.html_generator import generate_html_report
 
-# Set up logging
+# set up basic logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
+# define log file result data class
 class LogFileResult(TypedDict):
     ip: str
     label: str
     log_file: str
     data: NDArray[np.float64]
 
+# define RCR data class
 class RCRResult(TypedDict):
     rcr: float
     original_range: Tuple[float, float]
@@ -39,10 +41,6 @@ def identify_outliers_hybrid(
         min_cluster_size: int = 5,
         cluster_width: float = 10
 ) -> Tuple[NDArray[np.bool_], Tuple[float, float]]:
-    # function determines outliers based on values from config.json
-    # Note I AM NOT AN EXPERT, so cobbled the best hack I could together here
-    # results.html indicates effect of outlier removal
-    # Meaning you can fine-tune based on results to optimize according to your dataset
 
     z_scores = np.abs(stats.zscore(data))
     potential_outliers = z_scores >= z_threshold
@@ -77,8 +75,6 @@ def identify_outliers_hybrid(
 
 
 def calculate_rcr(data: NDArray[np.float64], params: Dict[str, Dict[str, Any]]) -> RCRResult:
-
-    # Calculate Range Coverage Ratio
 
     # Find range of dataset
     original_min, original_max = float(min(data)), float(max(data))
