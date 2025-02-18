@@ -1,0 +1,11 @@
+name: rcr_payload_jitter
+dependencies:
+  - numpy=1.26.4
+  - pandas=2.2.3
+  - matplotlib=3.9.2
+  - matplotlib-base=3.9.2
+  - matplotlib-inline=0.1.7
+  - scipy=1.14.1
+  - seaborn=0.13.2
+  - seaborn-base=0.13.2
+  - tqdm=4.67.1
